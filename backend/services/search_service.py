@@ -46,7 +46,7 @@ def search(db: Session, request: SearchRequest) -> SearchResponse:
     _logger.info("Gemini returned %d raw products for query='%s'", len(raw_products), request.query)
 
     filtered = _apply_filters(raw_products, preferences)
-    products = [Product(**p) for p in filtered]
+    products = [Product(id=i + 1, **p) for i, p in enumerate(filtered)]
 
     _logger.info(
         "Search complete | user_id=%s query='%s' raw=%d filtered=%d",

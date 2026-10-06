@@ -7,6 +7,7 @@ class SearchRequest(BaseModel):
 
 
 class Product(BaseModel):
+    id: int
     name: str
     price_ron: float
     rating: float
