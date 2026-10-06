@@ -52,15 +52,31 @@ _retry_strategy = retry(
 
 
 class GeminiService:
+    """Client wrapper for the Google Gemini generative AI API.
+
+    Configures the Gemini model with Google Search grounding on initialisation
+    and exposes a single public method for executing product searches.
+
+    Attributes:
+        _model: Configured GenerativeModel instance with search grounding enabled.
+    """
 
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
+            _logger.critical("GEMINI_API_KEY is missing — Gemini service cannot be initialised")
             raise GeminiServiceError("GEMINI_API_KEY not found in environment variables")
         genai.configure(api_key=api_key)
         self._model = self._build_model()
+        _logger.info("GeminiService initialised with model '%s'", GEMINI_MODEL)
 
     def _build_model(self) -> genai.GenerativeModel:
+        """
+        Instantiate the Gemini model with Google Search grounding enabled.
+
+        Returns:
+            Configured GenerativeModel ready for grounded content generation.
+        """
         return genai.GenerativeModel(
             model_name=GEMINI_MODEL,
             tools=[{"google_search_retrieval": {}}],
@@ -68,10 +84,31 @@ class GeminiService:
 
     @_retry_strategy
     def _call_api(self, prompt: str) -> str:
+        """
+        Send a prompt to the Gemini API and return the raw text response.
+
+        Decorated with the retry strategy for transient failures (429, 503).
+
+        Args:
+            prompt: Complete XML-structured prompt string.
+
+        Returns:
+            Raw text response from Gemini.
+        """
         response = self._model.generate_content(contents=prompt)
+        _logger.info("Gemini API call successful | response_length=%d chars", len(response.text))
         return response.text
 
     def search_products(self, prompt: str) -> list[dict]:
+        """
+        Execute a product search and return parsed results.
+
+        Args:
+            prompt: Complete XML-structured prompt string.
+
+        Returns:
+            List of raw product dicts extracted from the Gemini response.
+        """
         try:
             raw_text = self._call_api(prompt)
             return _extract_products(raw_text)
@@ -82,6 +119,15 @@ class GeminiService:
 
 
 def _extract_products(raw_text: str) -> list[dict]:
+    """
+    Parse Gemini's raw text response and extract the products list.
+
+    Args:
+        raw_text: Raw string response from the Gemini API.
+
+    Returns:
+        List of product dicts, or empty list if none found.
+    """
     data = _parse_llm_json(raw_text)
     if isinstance(data, dict):
         return data.get("products", [])

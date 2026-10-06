@@ -2,6 +2,16 @@ from backend.models import UserPreference
 
 
 def build_search_prompt(query: str, preferences: UserPreference | None) -> str:
+    """
+    Build a structured XML prompt for a Gemini product search request.
+
+    Args:
+        query: Natural language search query entered by the user.
+        preferences: User's saved preferences, or None if none are configured.
+
+    Returns:
+        Complete XML-structured prompt string ready to send to Gemini.
+    """
     preferences_block = _build_preferences_block(preferences)
 
     return f"""
@@ -47,6 +57,15 @@ def build_search_prompt(query: str, preferences: UserPreference | None) -> str:
 
 
 def _build_preferences_block(preferences: UserPreference | None) -> str:
+    """
+    Render user preferences as an XML block for prompt injection.
+
+    Args:
+        preferences: User's saved preferences, or None to return an empty string.
+
+    Returns:
+        Formatted XML string with preference tags, or empty string if None.
+    """
     if preferences is None:
         return ""
 
