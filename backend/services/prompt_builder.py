@@ -31,7 +31,9 @@ def build_search_prompt(query: str, preferences: UserPreference | None) -> str:
   Search Romanian e-commerce sites for real products matching the search query.
   Return between 5 and 10 products.
   Prices must be in RON (Romanian Lei).
-  Only include products currently available for purchase.
+  Only include products that are currently in stock and available to add to cart.
+  Exclude any product marked as "indisponibil", "stoc epuizat", "nu mai face parte din oferta",
+  or any equivalent out-of-stock or discontinued status.
   If a product does not have a visible rating, set rating to 0.0 and review_count to 0.
   If image URL is not available, set image_url to null.
 </instructions>
