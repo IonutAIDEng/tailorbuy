@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from backend.database import engine, Base
 from backend import models
-from backend.routers import health, search
+from backend.routers import health, search, preferences
 
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
@@ -29,3 +29,4 @@ app = FastAPI(
 
 app.include_router(health.router)
 app.include_router(search.router)
+app.include_router(preferences.router)
