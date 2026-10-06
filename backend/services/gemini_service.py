@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
@@ -9,6 +10,7 @@ import httpx
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from google.genai import errors as genai_errors
 from tenacity import (
     retry,
     retry_if_exception,
@@ -17,7 +19,7 @@ from tenacity import (
     before_sleep_log,
 )
 
-from backend.constants import GEMINI_MODEL, GEMINI_MAX_RETRIES, GEMINI_RETRY_MAX_WAIT_SECONDS
+from backend.constants import GEMINI_MODEL, GEMINI_MAX_RETRIES, GEMINI_RETRY_MAX_WAIT_SECONDS, GEMINI_MODEL_PRICING
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -32,16 +34,21 @@ def _is_retryable(exc: Exception) -> bool:
     """Identify transient failures that should trigger an automatic retry.
 
     Retries on:
-      - HTTP 429: quota exhausted — back off and retry.
-      - HTTP 503: transient server overload.
+      - SDK ClientError with 429 or 503: quota exhausted / transient overload.
+      - httpx HTTP 429/503: same, surfaced at transport layer.
       - ValueError: occasional SDK-level parse failures on otherwise valid responses.
+      - httpx network errors: connection drops and remote disconnects.
     """
-    from google.api_core.exceptions import ClientError
-    if isinstance(exc, ClientError):
-        http_code = getattr(exc, "code", None)
-        if http_code in (429, 503):
-            return True
-    return isinstance(exc, (ValueError, httpx.RemoteProtocolError))
+    if isinstance(exc, genai_errors.ClientError):
+        return getattr(exc, "status_code", None) in (429, 503)
+    status_code = (
+        getattr(exc, "code", None)
+        or getattr(exc, "status_code", None)
+        or (exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None)
+    )
+    if status_code in (429, 503):
+        return True
+    return isinstance(exc, (ValueError, httpx.RemoteProtocolError, httpx.ConnectError))
 
 
 _retry_strategy = retry(
@@ -51,6 +58,51 @@ _retry_strategy = retry(
     before_sleep=before_sleep_log(_logger, logging.WARNING),
     reraise=True,
 )
+
+
+@dataclass(frozen=True)
+class UsageSummary:
+    input_tokens: int
+    output_tokens: int
+    thinking_tokens: int
+    total_tokens: int
+    cost_usd: float
+
+
+def _compute_usage(usage_metadata) -> UsageSummary:
+    input_tokens = getattr(usage_metadata, "prompt_token_count", 0) or 0
+    output_tokens = getattr(usage_metadata, "candidates_token_count", 0) or 0
+    thinking_tokens = getattr(usage_metadata, "thoughts_token_count", 0) or 0
+
+    pricing = GEMINI_MODEL_PRICING.get(GEMINI_MODEL)
+    if pricing is None:
+        _logger.warning("No pricing config for model '%s' — cost will be reported as $0.00", GEMINI_MODEL)
+        cost_usd = 0.0
+    else:
+        cost_usd = (
+            input_tokens * pricing.input / 1_000_000
+            + output_tokens * pricing.output / 1_000_000
+            + thinking_tokens * pricing.thinking / 1_000_000
+        )
+
+    return UsageSummary(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        thinking_tokens=thinking_tokens,
+        total_tokens=input_tokens + output_tokens + thinking_tokens,
+        cost_usd=cost_usd,
+    )
+
+
+def _log_usage(summary: UsageSummary) -> None:
+    _logger.info(
+        "Gemini usage | input=%d output=%d thinking=%d total=%d cost=$%.6f",
+        summary.input_tokens,
+        summary.output_tokens,
+        summary.thinking_tokens,
+        summary.total_tokens,
+        summary.cost_usd,
+    )
 
 
 class GeminiService:
@@ -77,6 +129,8 @@ class GeminiService:
         Send a prompt to the Gemini API and return the raw text response.
 
         Decorated with the retry strategy for transient failures (429, 503).
+        AFC is explicitly disabled to prevent the SDK from treating Google Search
+        as a Python callable — grounding is handled server-side by the model.
 
         Args:
             prompt: Complete XML-structured prompt string.
@@ -89,9 +143,10 @@ class GeminiService:
             contents=prompt,
             config=types.GenerateContentConfig(
                 tools=[types.Tool(google_search=types.GoogleSearch())],
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             ),
         )
-        _logger.info("Gemini API call successful | response_length=%d chars", len(response.text))
+        _log_usage(_compute_usage(response.usage_metadata))
         return response.text
 
     def search_products(self, prompt: str) -> list[dict]:
