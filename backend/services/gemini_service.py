@@ -4,8 +4,11 @@ import os
 import re
 from pathlib import Path
 
-import google.generativeai as genai
+import httpx
+
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 from tenacity import (
     retry,
     retry_if_exception,
@@ -33,13 +36,12 @@ def _is_retryable(exc: Exception) -> bool:
       - HTTP 503: transient server overload.
       - ValueError: occasional SDK-level parse failures on otherwise valid responses.
     """
-    from google.api_core.exceptions import GoogleAPICallError
-    if isinstance(exc, GoogleAPICallError):
-        code = getattr(exc, "grpc_status_code", None)
+    from google.api_core.exceptions import ClientError
+    if isinstance(exc, ClientError):
         http_code = getattr(exc, "code", None)
-        if http_code in (429, 503) or (code is not None and code.value[0] in (8, 14)):
+        if http_code in (429, 503):
             return True
-    return isinstance(exc, ValueError)
+    return isinstance(exc, (ValueError, httpx.RemoteProtocolError))
 
 
 _retry_strategy = retry(
@@ -54,11 +56,11 @@ _retry_strategy = retry(
 class GeminiService:
     """Client wrapper for the Google Gemini generative AI API.
 
-    Configures the Gemini model with Google Search grounding on initialisation
+    Configures the Gemini client with Google Search grounding on initialisation
     and exposes a single public method for executing product searches.
 
     Attributes:
-        _model: Configured GenerativeModel instance with search grounding enabled.
+        _client: Authenticated google.genai Client instance.
     """
 
     def __init__(self):
@@ -66,21 +68,8 @@ class GeminiService:
         if not api_key:
             _logger.critical("GEMINI_API_KEY is missing — Gemini service cannot be initialised")
             raise GeminiServiceError("GEMINI_API_KEY not found in environment variables")
-        genai.configure(api_key=api_key)
-        self._model = self._build_model()
+        self._client = genai.Client(api_key=api_key)
         _logger.info("GeminiService initialised with model '%s'", GEMINI_MODEL)
-
-    def _build_model(self) -> genai.GenerativeModel:
-        """
-        Instantiate the Gemini model with Google Search grounding enabled.
-
-        Returns:
-            Configured GenerativeModel ready for grounded content generation.
-        """
-        return genai.GenerativeModel(
-            model_name=GEMINI_MODEL,
-            tools=[{"google_search_retrieval": {}}],
-        )
 
     @_retry_strategy
     def _call_api(self, prompt: str) -> str:
@@ -95,7 +84,13 @@ class GeminiService:
         Returns:
             Raw text response from Gemini.
         """
-        response = self._model.generate_content(contents=prompt)
+        response = self._client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+            ),
+        )
         _logger.info("Gemini API call successful | response_length=%d chars", len(response.text))
         return response.text
 
