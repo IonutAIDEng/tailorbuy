@@ -74,10 +74,10 @@ def _apply_filters(raw: list[dict], preferences: UserPreference | None) -> list[
     Returns:
         Filtered and sorted list of product dicts.
     """
-    if not preferences:
-        return raw
-
     result = raw
+
+    if preferences is None:
+        return sorted(result, key=lambda p: p.get("rating", 0), reverse=True)
 
     if preferences.cash_only:
         result = [p for p in result if p.get("cash_on_delivery") is True]

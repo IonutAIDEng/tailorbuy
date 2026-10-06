@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 class SearchRequest(BaseModel):
     user_id: int
-    query: str = Field(min_length=13, max_length=200)
+    query: str = Field(min_length=3, max_length=200)
 
 
 class Product(BaseModel):
