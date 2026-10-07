@@ -1,8 +1,11 @@
 import logging
+from datetime import date
 
 from sqlalchemy.orm import Session
 
-from backend.models import UserPreference
+from backend.constants import DAILY_SEARCH_LIMIT
+from backend.exceptions import SearchQuotaExceededError
+from backend.models import User, UserPreference
 from backend.schemas.search import SearchRequest, SearchResponse, Product
 from backend.services.gemini_service import GeminiService, GeminiServiceError
 from backend.services.prompt_builder import build_search_prompt
@@ -11,21 +14,10 @@ _logger = logging.getLogger(__name__)
 
 
 def search(db: Session, request: SearchRequest) -> SearchResponse:
-    """
-    Execute a product search using the user's query and stored preferences.
-
-    Fetches the user's saved preferences from the database, builds an XML prompt,
-    calls the Gemini API with Google Search grounding, applies deterministic filters,
-    and returns a validated response.
-
-    Args:
-        db: Active SQLAlchemy database session.
-        request: Search request containing user_id and natural language query.
-
-    Returns:
-        SearchResponse with filtered and sorted products.
-    """
+    """Run a quota-checked, preference-filtered product search via Gemini."""
     _logger.info("Search started | user_id=%s query='%s'", request.user_id, request.query)
+
+    _check_and_increment_quota(db, request.user_id)
 
     preferences = db.query(UserPreference).filter(
         UserPreference.user_id == request.user_id
@@ -53,27 +45,38 @@ def search(db: Session, request: SearchRequest) -> SearchResponse:
         request.user_id, request.query, len(raw_products), len(products)
     )
 
-    return SearchResponse(
-        query=request.query,
-        products=products,
-        total=len(products)
-    )
+    return SearchResponse(query=request.query, products=products, total=len(products))
+
+
+def _check_and_increment_quota(db: Session, user_id: int) -> None:
+    """Enforce the daily search limit, resetting the counter at the start of each new day.
+
+    Raises:
+        ValueError: if the user does not exist.
+        SearchQuotaExceededError: if the user has reached DAILY_SEARCH_LIMIT today.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise ValueError(f"user_id={user_id} not found")
+
+    today = date.today()
+    if user.last_search_date != today:
+        user.searches_today = 0
+        user.last_search_date = today
+
+    if user.searches_today >= DAILY_SEARCH_LIMIT:
+        _logger.warning("Daily quota exceeded | user_id=%s searches_today=%s", user_id, user.searches_today)
+        raise SearchQuotaExceededError(
+            f"Daily search limit of {DAILY_SEARCH_LIMIT} reached for user_id={user_id}"
+        )
+
+    user.searches_today += 1
+    db.commit()
+    _logger.debug("Quota incremented | user_id=%s searches_today=%s", user_id, user.searches_today)
 
 
 def _apply_filters(raw: list[dict], preferences: UserPreference | None) -> list[dict]:
-    """
-    Apply deterministic preference-based filters to raw product data.
-
-    Filters by cash on delivery, minimum rating, and maximum price when the
-    corresponding preferences are set. Results are sorted by rating descending.
-
-    Args:
-        raw: List of raw product dicts returned by the Gemini service.
-        preferences: User's saved preferences, or None to skip all filtering.
-
-    Returns:
-        Filtered and sorted list of product dicts.
-    """
+    """Filter raw Gemini products by user preferences and sort by rating descending."""
     result = raw
 
     if preferences is None:

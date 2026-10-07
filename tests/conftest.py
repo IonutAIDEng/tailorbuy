@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
+os.environ.setdefault("RATELIMIT_ENABLED", "0")
 
 from backend.database import Base, get_db
 from backend.main import app
