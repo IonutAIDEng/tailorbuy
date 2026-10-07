@@ -131,3 +131,23 @@ class TestGeminiService:
             service = GeminiService()
             with pytest.raises(GeminiServiceError):
                 service.search_products("prompt")
+
+    def test_raises_gemini_error_when_response_text_is_empty(self):
+        """Covers the empty-response guard (line 152) and GeminiServiceError re-raise (line 169)."""
+        mock_response = MagicMock()
+        mock_response.text = None
+        mock_response.usage_metadata = MagicMock(
+            prompt_token_count=0, candidates_token_count=0, thoughts_token_count=8192
+        )
+        with patch("backend.services.gemini_service.genai.Client") as MockClient:
+            MockClient.return_value.models.generate_content.return_value = mock_response
+            service = GeminiService()
+            with pytest.raises(GeminiServiceError, match="empty response"):
+                service.search_products("any prompt")
+
+
+class TestExtractProductsAdditional:
+    def test_returns_empty_list_when_json_is_array_not_object(self):
+        """Covers the `return []` branch (line 187) when LLM returns a bare array."""
+        raw = '[{"name": "TV", "price_ron": 1200}]'
+        assert _extract_products(raw) == []

@@ -1,4 +1,5 @@
 """Tests for gemini_service module-level utilities not covered elsewhere."""
+import json
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -136,3 +137,13 @@ class TestParseLlmJsonAdditional:
         raw = '{"products": [{"name": "line1\nline2"}]}'
         result = _parse_llm_json(raw)
         assert "products" in result
+
+    def test_raises_when_regex_match_finds_unparseable_braces(self):
+        """Covers except branch inside the regex fallback (lines 232-233).
+
+        Input has bracket-like content so the regex matches, but the content
+        is not valid JSON, exercising the final recovery failure path.
+        """
+        raw = "prefix {not: valid json content} suffix"
+        with pytest.raises(json.JSONDecodeError):
+            _parse_llm_json(raw)

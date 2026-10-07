@@ -17,7 +17,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={handlePress}>
+    <Pressable testID="product-card-pressable" style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={handlePress}>
       <Image
         source={product.image_url ?? undefined}
         style={styles.image}
