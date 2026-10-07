@@ -86,7 +86,7 @@ export function PriceSliderInput({ value, onChange }: Props) {
             <Text style={[styles.suffix, error ? styles.suffixError : null]}>RON</Text>
           </View>
         ) : (
-          <Pressable onPress={handleTap} hitSlop={8}>
+          <Pressable onPress={handleTap} hitSlop={8} testID="price-value-tap">
             <Text style={styles.currentValue}>
               {value === 0 ? 'Orice preț' : `${value} RON`}
             </Text>
