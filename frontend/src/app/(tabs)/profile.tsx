@@ -1,4 +1,3 @@
-import Slider from '@react-native-community/slider';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,11 +12,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '@/components/gradient-background';
 import { PreferenceToggle } from '@/components/preference-toggle';
+import { PriceSliderInput } from '@/components/price-slider-input';
 import { Colors } from '@/constants/colors';
 import { API_BASE_URL, ENDPOINTS, USER_ID } from '@/constants/api';
 import type { Preferences } from '@/types';
-
-const MAX_PRICE_LIMIT = 5000;
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
@@ -115,32 +113,13 @@ export default function ProfileScreen() {
               />
             </View>
 
-            <View style={styles.sliderSection}>
-              <View style={styles.sliderHeader}>
-                <Text style={styles.sliderLabel}>Preț maxim</Text>
-                <Text style={styles.sliderValue}>
-                  {sliderValue === 0 ? 'Orice preț' : `${sliderValue} RON`}
-                </Text>
-              </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={0}
-                maximumValue={MAX_PRICE_LIMIT}
-                step={50}
-                value={sliderValue}
-                onValueChange={(v) => {
-                  setSliderValue(Math.round(v));
-                  setDirty(true);
-                }}
-                minimumTrackTintColor={Colors.primary}
-                maximumTrackTintColor={Colors.toggleInactive}
-                thumbTintColor={Colors.primary}
-              />
-              <View style={styles.sliderRange}>
-                <Text style={styles.rangeText}>0</Text>
-                <Text style={styles.rangeText}>{MAX_PRICE_LIMIT} RON</Text>
-              </View>
-            </View>
+            <PriceSliderInput
+              value={sliderValue}
+              onChange={(v) => {
+                setSliderValue(v);
+                setDirty(true);
+              }}
+            />
 
             <Pressable
               style={({ pressed }) => [
@@ -213,28 +192,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  sliderSection: { gap: 8 },
-  sliderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sliderLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textDark,
-  },
-  sliderValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  slider: { width: '100%', height: 40 },
-  sliderRange: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  rangeText: { fontSize: 11, color: Colors.textMid },
   button: {
     backgroundColor: Colors.buttonBg,
     borderRadius: 16,

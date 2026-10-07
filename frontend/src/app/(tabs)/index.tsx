@@ -1,4 +1,3 @@
-import Slider from '@react-native-community/slider';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -17,11 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '@/components/gradient-background';
 import { PreferenceToggle } from '@/components/preference-toggle';
+import { PriceSliderInput } from '@/components/price-slider-input';
 import { Colors } from '@/constants/colors';
 import { API_BASE_URL, ENDPOINTS, USER_ID } from '@/constants/api';
 import type { Preferences, SearchResponse } from '@/types';
-
-const MAX_PRICE_LIMIT = 5000;
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
@@ -31,7 +29,6 @@ export default function SearchScreen() {
   const [cashOnly, setCashOnly] = useState(false);
   const [openPackage, setOpenPackage] = useState(false);
   const [ratingEnabled, setRatingEnabled] = useState(false);
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [sliderValue, setSliderValue] = useState(0);
 
   useEffect(() => {
@@ -46,9 +43,7 @@ export default function SearchScreen() {
       setCashOnly(prefs.cash_only);
       setOpenPackage(prefs.open_package);
       setRatingEnabled(prefs.min_rating >= 4.5);
-      const price = prefs.max_price ?? 0;
-      setMaxPrice(prefs.max_price);
-      setSliderValue(price);
+      setSliderValue(prefs.max_price ?? 0);
     } catch {
       // silently use defaults if backend unreachable on first load
     } finally {
@@ -83,17 +78,11 @@ export default function SearchScreen() {
           total: String(data.total),
         },
       });
-    } catch (e) {
+    } catch {
       Alert.alert('Eroare', 'Nu am putut obține rezultate. Verificați conexiunea.');
     } finally {
       setLoading(false);
     }
-  }
-
-  function handleSliderChange(value: number) {
-    const rounded = Math.round(value);
-    setSliderValue(rounded);
-    setMaxPrice(rounded === 0 ? null : rounded);
   }
 
   if (prefsLoading) {
@@ -148,29 +137,10 @@ export default function SearchScreen() {
                 />
               </View>
 
-              <View style={styles.sliderSection}>
-                <View style={styles.sliderHeader}>
-                  <Text style={styles.sliderLabel}>Preț maxim</Text>
-                  <Text style={styles.sliderValue}>
-                    {sliderValue === 0 ? 'Orice preț' : `${sliderValue} RON`}
-                  </Text>
-                </View>
-                <Slider
-                  style={styles.slider}
-                  minimumValue={0}
-                  maximumValue={MAX_PRICE_LIMIT}
-                  step={50}
-                  value={sliderValue}
-                  onValueChange={handleSliderChange}
-                  minimumTrackTintColor={Colors.primary}
-                  maximumTrackTintColor={Colors.toggleInactive}
-                  thumbTintColor={Colors.primary}
-                />
-                <View style={styles.sliderRange}>
-                  <Text style={styles.rangeText}>0</Text>
-                  <Text style={styles.rangeText}>{MAX_PRICE_LIMIT} RON</Text>
-                </View>
-              </View>
+              <PriceSliderInput
+                value={sliderValue}
+                onChange={setSliderValue}
+              />
 
               <Pressable
                 style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
@@ -247,31 +217,6 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row',
     gap: 10,
-  },
-  sliderSection: { gap: 8 },
-  sliderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sliderLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textDark,
-  },
-  sliderValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  slider: { width: '100%', height: 40 },
-  sliderRange: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  rangeText: {
-    fontSize: 11,
-    color: Colors.textMid,
   },
   button: {
     backgroundColor: Colors.buttonBg,
