@@ -36,7 +36,27 @@ Steps:
 
 ---
 
-## 3. User Feedback Loop
+## 3. Saved Products — Coș de Cumpărături (Basket / Wishlist)
+**Priority:** High
+**Phase:** Post-MVP
+
+Allow users to bookmark/save any product from the search results so they can review it later. A dedicated screen (e.g. "Salvate" tab) shows all saved products with the option to remove each one.
+
+UI:
+- Bookmark icon on each product card in the results screen.
+- Tapping it saves the product; tapping again removes it (toggle).
+- Saved tab shows the full list sorted by save date descending.
+- Each item in the list has a remove button (swipe or trash icon).
+
+Implementation notes:
+- New table: `saved_products` (user_id, product snapshot as JSON, saved_at).
+- Store a snapshot of the product (name, price, url, store, image_url) at save time — prices change, so we capture what the user saw.
+- New endpoints: `POST /saved/{user_id}`, `GET /saved/{user_id}`, `DELETE /saved/{user_id}/{product_id}`.
+- The saved list does NOT re-query Gemini — it shows the exact snapshot saved.
+
+---
+
+## 4. User Feedback Loop
 **Priority:** Medium  
 **Phase:** Post-MVP
 
