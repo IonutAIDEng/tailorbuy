@@ -34,29 +34,27 @@ Required because React Native's CMake build generates file paths that exceed Win
 
 **2. Clone the project to a short path** — CMake has its own 250-character internal limit that Windows long path support does NOT override:
 ```
-git clone https://github.com/IonutAIDEng/tailorbuy.git C:\tb
+git clone <repo-url> C:\tb
 cd C:\tb
-git checkout feature/gemini-search
 ```
 
 ### Running the app on the emulator
 
-**1. Start the Android emulator** in Android Studio → Device Manager → press Play.
+**1. Start the Android emulator** in Android Studio → More Actions -> Virtual Device Manager → press Play.
 
-**2. Start the backend** (Terminal 1):
+**2. Start the backend** (Terminal 1 — from the project root):
 ```
-cd C:\tb
 poetry run uvicorn backend.main:app --reload
 ```
 
 **3. Build and install the app** (Terminal 2 — run every session):
 ```
 set JAVA_HOME=C:\Users\<your-username>\AppData\Local\Programs\Microsoft\jdk-17.0.20.101-hotspot
-cd C:\tb\frontend
+cd <project-path>\frontend
 npx expo run:android
 ```
 
-If you get `SDK location not found`, create `C:\tb\frontend\android\local.properties`:
+If you get `SDK location not found`, create `<project-path>\frontend\android\local.properties`:
 ```
 sdk.dir=C\:\\Users\\<your-username>\\AppData\\Local\\Android\\Sdk
 ```
@@ -71,7 +69,7 @@ The first build takes ~8 minutes. Subsequent builds are ~30 seconds.
 |---|---|---|
 | `JAVA_HOME is not set` | Android Studio's Java 21 is not on PATH | Set `JAVA_HOME` to Java 17 path before building |
 | `A restricted method in java.lang.System` | Java 21 incompatibility with React Native native modules | Use Java 17 (see above) |
-| `ninja: manifest still dirty after 100 tries` | CMake 250-char path limit exceeded | Clone project to `C:\tb` (short path) |
+| `ninja: manifest still dirty after 100 tries` | CMake 250-char path limit exceeded | Clone project to a short path (e.g. `C:\tb`) |
 | `SDK location not found` | `local.properties` missing after prebuild | Create it manually (see above) |
 | `newArchEnabled=false` warning | React Native 0.82+ ignores this flag | Safe to ignore, New Architecture is always on |
 
