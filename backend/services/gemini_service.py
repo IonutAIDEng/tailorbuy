@@ -144,9 +144,12 @@ class GeminiService:
             config=types.GenerateContentConfig(
                 tools=[types.Tool(google_search=types.GoogleSearch())],
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                thinking_config=types.ThinkingConfig(thinking_budget=8192),
             ),
         )
         _log_usage(_compute_usage(response.usage_metadata))
+        if not response.text:
+            raise GeminiServiceError("Gemini returned an empty response — model may have used all tokens for thinking")
         return response.text
 
     def search_products(self, prompt: str) -> list[dict]:
