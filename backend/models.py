@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Float, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Float, DateTime, Date
 
 from backend.database import Base
 
@@ -10,6 +10,8 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     device_id = Column(String, unique=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    searches_today = Column(Integer, nullable=False, default=0, server_default='0')
+    last_search_date = Column(Date, nullable=True)
 
 
 class UserPreference(Base):
