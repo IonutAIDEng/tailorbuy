@@ -73,7 +73,24 @@ Allow users to track a product and receive a notification when the price drops b
 
 ---
 
-## 6. SerpAPI as Search Fallback
+## 6. Preferred Store Selection (User-Configurable)
+**Priority:** Medium  
+**Phase:** Post-MVP
+
+Allow users to select which e-commerce sites they prefer via a checklist in the Profile screen (eMAG, Altex, Cel.ro, Flanco, PCGarage, Evomag, etc.). Add a toggle: "Search only on selected sites".
+
+Behaviour:
+- Toggle OFF (default): AI searches selected sites first and prioritises their results, but also searches other Romanian stores to check for better results.
+- Toggle ON: AI is explicitly instructed to search ONLY on the selected sites and must not return products from any other source.
+
+Implementation notes:
+- Store selected sites + toggle as part of `UserPreference` (new columns or JSON column).
+- Prompt builder reads the site list and injects either `site:emag.ro OR site:altex.ro` (toggle ON) or a prioritised search with a broad fallback (toggle OFF).
+- Profile screen: scrollable checklist of supported stores, each with logo/name, plus the "Search only here" toggle.
+
+---
+
+## 7. SerpAPI as Search Fallback
 **Priority:** Low  
 **Phase:** Scaling
 
