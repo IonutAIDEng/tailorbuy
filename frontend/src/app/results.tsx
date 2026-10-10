@@ -7,6 +7,19 @@ import { ProductCard } from '@/components/product-card';
 import { Colors } from '@/constants/colors';
 import type { Product } from '@/types';
 
+function MatchLegend() {
+  return (
+    <View style={styles.legend}>
+      <Text style={styles.legendText}>
+        <Text style={styles.legendGreen}>✓ Preferințe bifate</Text>
+        {' — toate criteriile tale sunt îndeplinite  ·  '}
+        <Text style={styles.legendAmber}>~ Potrivire parțială</Text>
+        {' — unele criterii nu sunt confirmate'}
+      </Text>
+    </View>
+  );
+}
+
 export default function ResultsScreen() {
   const { query, products: productsParam, total, message } = useLocalSearchParams<{
     query: string;
@@ -46,6 +59,7 @@ export default function ResultsScreen() {
           <FlatList
             data={products}
             keyExtractor={(item) => String(item.id)}
+            ListHeaderComponent={<MatchLegend />}
             renderItem={({ item }) => <ProductCard product={item} />}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
@@ -124,5 +138,27 @@ const styles = StyleSheet.create({
     color: Colors.textMid,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  legend: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    marginTop: 4,
+    backgroundColor: '#f7fafc',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  legendText: {
+    fontSize: 11,
+    color: Colors.textMid,
+    lineHeight: 16,
+  },
+  legendGreen: {
+    color: Colors.matchesGreen,
+    fontWeight: '600',
+  },
+  legendAmber: {
+    color: Colors.matchesAmber,
+    fontWeight: '600',
   },
 });

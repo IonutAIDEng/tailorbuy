@@ -14,6 +14,7 @@ export interface Product {
   store: string;
   url: string;
   image_url: string | null;
+  status_match: 'all' | 'partial';
 }
 
 export interface SearchResponse {

@@ -83,17 +83,25 @@ def _apply_filters(raw: list[dict], preferences: UserPreference | None) -> list[
     preferences are active (e.g. only new_only/open_package which Gemini enforces),
     all returned products are trusted and sorted by rating.
     Results are sorted by match score descending, then rating descending.
+    Each product receives a status_match field: "all" if every verifiable preference
+    is satisfied, "partial" otherwise.
     """
     if preferences is None:
+        for p in raw:
+            p["status_match"] = "all"
         return sorted(raw, key=lambda p: p.get("rating", 0), reverse=True)
 
     total_verifiable = _count_verifiable_preferences(preferences)
     if total_verifiable == 0:
+        for p in raw:
+            p["status_match"] = "all"
         return sorted(raw, key=lambda p: p.get("rating", 0), reverse=True)
 
     scored = [(product, _compute_match_score(product, preferences)) for product in raw]
     qualifying = [(p, score) for p, score in scored if score > 0]
     qualifying.sort(key=lambda x: (x[1], x[0].get("rating", 0)), reverse=True)
+    for p, score in qualifying:
+        p["status_match"] = "all" if score >= total_verifiable else "partial"
     return [p for p, _ in qualifying]
 
 

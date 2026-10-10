@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -15,6 +17,7 @@ class Product(BaseModel):
     store: str
     url: str
     image_url: str | None
+    status_match: Literal["all", "partial"] = "all"
 
 
 class SearchResponse(BaseModel):
