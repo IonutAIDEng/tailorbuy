@@ -21,4 +21,8 @@ class UserPreference(Base):
     open_package = Column(Boolean)
     min_rating = Column(Float)
     max_price = Column(Integer, nullable=True, default=None)
+    min_review_count = Column(Integer, nullable=True, default=None)
+    new_only = Column(Boolean, nullable=False, default=False, server_default='false')
+    search_emag = Column(Boolean, nullable=False, default=True, server_default='true')
+    search_altex = Column(Boolean, nullable=False, default=True, server_default='true')
     user_id = Column(Integer, ForeignKey('users.id'))

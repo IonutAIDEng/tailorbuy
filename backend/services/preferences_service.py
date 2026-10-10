@@ -33,6 +33,10 @@ def get_preferences(db: Session, user_id: int) -> PreferencesResponse:
         open_package=bool(prefs.open_package),
         min_rating=float(prefs.min_rating or 0.0),
         max_price=prefs.max_price,
+        min_review_count=prefs.min_review_count,
+        new_only=bool(prefs.new_only),
+        search_emag=bool(prefs.search_emag),
+        search_altex=bool(prefs.search_altex),
     )
 
 
@@ -60,6 +64,10 @@ def update_preferences(db: Session, user_id: int, data: PreferencesUpdateRequest
     prefs.open_package = data.open_package
     prefs.min_rating = data.min_rating
     prefs.max_price = data.max_price
+    prefs.min_review_count = data.min_review_count
+    prefs.new_only = data.new_only
+    prefs.search_emag = data.search_emag
+    prefs.search_altex = data.search_altex
 
     db.commit()
     db.refresh(prefs)
@@ -70,6 +78,10 @@ def update_preferences(db: Session, user_id: int, data: PreferencesUpdateRequest
         open_package=bool(prefs.open_package),
         min_rating=float(prefs.min_rating or 0.0),
         max_price=prefs.max_price,
+        min_review_count=prefs.min_review_count,
+        new_only=bool(prefs.new_only),
+        search_emag=bool(prefs.search_emag),
+        search_altex=bool(prefs.search_altex),
     )
 
 
@@ -80,4 +92,8 @@ def _default_response(user_id: int) -> PreferencesResponse:
         open_package=False,
         min_rating=0.0,
         max_price=None,
+        min_review_count=None,
+        new_only=False,
+        search_emag=True,
+        search_altex=True,
     )
