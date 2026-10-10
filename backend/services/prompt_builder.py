@@ -8,7 +8,11 @@ def build_search_prompt(query: str, preferences: UserPreference | None) -> str:
 
     return f"""
 <role>
-  You are a precise product search engine for Romanian e-commerce.
+  You are a product search engine for Romanian e-commerce.
+  Your job is to find products matching the user's query that also satisfy the user's
+  preferences. Return products sorted by how well they match: products satisfying ALL
+  preferences first, then products satisfying MOST, then partial matches.
+  Do NOT return products that clearly satisfy NONE of the user's preferences.
   You ONLY report products you have directly observed in search results.
   You NEVER invent, guess, or extrapolate any product detail.
 </role>
@@ -44,6 +48,8 @@ def build_search_prompt(query: str, preferences: UserPreference | None) -> str:
 
   STEP 4 — SELECT
     Take the top 5 to 10 candidates from the ranked list.
+    Include products that fully OR partially match preferences — ranked best match first.
+    Do NOT return products that satisfy zero preferences.
     Prefer fewer high-quality results over many mediocre ones.
 
   STEP 5 — OUTPUT
@@ -81,11 +87,27 @@ def _build_search_block(query: str, preferences: UserPreference | None) -> str:
     extra = ""
     if preferences and preferences.cash_only:
         extra = ' "plata ramburs"'
+    if preferences and preferences.open_package:
+        extra += ' "deschidere colet"'
+    if preferences and preferences.new_only:
+        extra += " -resigilat -reconditionat"
 
+    search_emag = not preferences or preferences.search_emag
+    search_altex = not preferences or preferences.search_altex
+    if not search_emag and not search_altex:
+        search_emag = True
+        search_altex = True
+
+    queries = []
+    if search_emag:
+        queries.append(f"site:emag.ro {query}{extra}")
+    if search_altex:
+        queries.append(f"site:altex.ro {query}{extra}")
+
+    query_lines = "\n    - ".join(queries)
     return f"""
     Run these targeted Google Search queries:
-    - site:emag.ro {query}{extra}
-    - site:altex.ro {query}{extra}"""
+    - {query_lines}"""
 
 
 def _build_hard_filters_block(preferences: UserPreference | None) -> str:
@@ -112,8 +134,20 @@ def _build_hard_filters_block(preferences: UserPreference | None) -> str:
 
     if preferences.open_package:
         lines.append(
-            '    d) Open package: keep only listings explicitly marked as '
-            '"open box", "resigilat", or "reconditionat".'
+            '    d) Deschidere colet: keep only listings that explicitly offer '
+            '"deschidere colet" delivery — the courier waits while the buyer '
+            'inspects the product and can return it on the spot if unsatisfied.'
+        )
+
+    if preferences.new_only:
+        lines.append(
+            '    e) New only: discard any listing marked as "resigilat", "reconditionat", '
+            '"open box", or "second hand".'
+        )
+
+    if preferences.min_review_count:
+        lines.append(
+            f'    f) Minimum reviews: discard if review_count < {preferences.min_review_count}.'
         )
 
     return "\n".join(lines)
@@ -129,11 +163,27 @@ def _build_preferences_block(preferences: UserPreference | None) -> str:
         else ""
     )
 
+    min_review_tag = (
+        f"  <min_review_count>{preferences.min_review_count}</min_review_count>"
+        if preferences.min_review_count
+        else ""
+    )
+
+    stores = []
+    if preferences.search_emag:
+        stores.append("eMAG")
+    if preferences.search_altex:
+        stores.append("Altex")
+    store_str = ", ".join(stores) if stores else "eMAG, Altex"
+
     return f"""
 <user_preferences>
   <cash_on_delivery>{str(preferences.cash_only).lower()}</cash_on_delivery>
   <min_rating>{preferences.min_rating}</min_rating>
   <open_package>{str(preferences.open_package).lower()}</open_package>
+  <new_only>{str(preferences.new_only).lower()}</new_only>
+  <search_stores>{store_str}</search_stores>
 {max_price_tag}
+{min_review_tag}
 </user_preferences>
 """.strip()

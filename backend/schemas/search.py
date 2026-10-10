@@ -22,3 +22,4 @@ class SearchResponse(BaseModel):
     query: str
     products: list[Product]
     total: int
+    message: str | None = None
