@@ -6,36 +6,36 @@ from sqlalchemy.orm import Session
 from backend.constants import DAILY_SEARCH_LIMIT
 from backend.exceptions import SearchQuotaExceededError
 from backend.models import User, UserPreference
-from backend.schemas.search import SearchRequest, SearchResponse, Product
+from backend.schemas.search import SearchResponse, Product
 from backend.services.gemini_service import GeminiService, GeminiServiceError
 from backend.services.prompt_builder import build_search_prompt
 
 _logger = logging.getLogger(__name__)
 
 
-def search(db: Session, request: SearchRequest) -> SearchResponse:
+def search(db: Session, user_id: int, query: str) -> SearchResponse:
     """Run a quota-checked, preference-filtered product search via Gemini."""
-    _logger.info("Search started | user_id=%s query='%s'", request.user_id, request.query)
+    _logger.info("Search started | user_id=%s query='%s'", user_id, query)
 
-    _check_and_increment_quota(db, request.user_id)
+    _check_and_increment_quota(db, user_id)
 
     preferences = db.query(UserPreference).filter(
-        UserPreference.user_id == request.user_id
+        UserPreference.user_id == user_id
     ).first()
 
     if preferences is None:
-        _logger.warning("No preferences found for user_id=%s — search will run without filters", request.user_id)
+        _logger.warning("No preferences found for user_id=%s — search will run without filters", user_id)
     else:
-        _logger.info("Preferences loaded for user_id=%s", request.user_id)
+        _logger.info("Preferences loaded for user_id=%s", user_id)
 
-    prompt = build_search_prompt(query=request.query, preferences=preferences)
+    prompt = build_search_prompt(query=query, preferences=preferences)
     try:
         gemini = GeminiService()
         raw_products = gemini.search_products(prompt)
     except GeminiServiceError as e:
-        raise GeminiServiceError(f"Search failed for query '{request.query}': {str(e)}")
+        raise GeminiServiceError(f"Search failed for query '{query}': {str(e)}")
 
-    _logger.info("Gemini returned %d raw products for query='%s'", len(raw_products), request.query)
+    _logger.info("Gemini returned %d raw products for query='%s'", len(raw_products), query)
 
     filtered = _apply_filters(raw_products, preferences)
     products = [Product(id=i + 1, **p) for i, p in enumerate(filtered)]
@@ -43,10 +43,10 @@ def search(db: Session, request: SearchRequest) -> SearchResponse:
 
     _logger.info(
         "Search complete | user_id=%s query='%s' raw=%d filtered=%d",
-        request.user_id, request.query, len(raw_products), len(products)
+        user_id, query, len(raw_products), len(products)
     )
 
-    return SearchResponse(query=request.query, products=products, total=len(products), message=message)
+    return SearchResponse(query=query, products=products, total=len(products), message=message)
 
 
 def _check_and_increment_quota(db: Session, user_id: int) -> None:
