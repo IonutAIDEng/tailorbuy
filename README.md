@@ -75,6 +75,20 @@ The first build takes ~8 minutes. Subsequent builds are ~30 seconds.
 
 ---
 
+## AI Usage Limits
+
+To keep the app within the free tier of the Gemini API, the following limits are enforced:
+
+| Limit | Value |
+|---|---|
+| Searches per user per day | 10 |
+| Requests per minute per IP | 5 |
+
+The daily search counter resets at midnight (calendar day change, not 24 hours from first search).
+When a limit is reached the API returns HTTP 429 with a structured error response.
+
+---
+
 ## API
 
 Backend runs on `http://127.0.0.1:8000`. From the Android emulator use `http://10.0.2.2:8000`.

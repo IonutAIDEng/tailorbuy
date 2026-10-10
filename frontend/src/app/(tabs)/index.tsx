@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,8 +15,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '@/components/gradient-background';
-import { PreferenceToggle } from '@/components/preference-toggle';
-import { PriceSliderInput } from '@/components/price-slider-input';
 import { Colors } from '@/constants/colors';
 import { API_BASE_URL, ENDPOINTS, USER_ID } from '@/constants/api';
 import type { Preferences, SearchResponse } from '@/types';
@@ -25,30 +23,40 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [prefsLoading, setPrefsLoading] = useState(true);
+  const [prefs, setPrefs] = useState<Preferences | null>(null);
 
-  const [cashOnly, setCashOnly] = useState(false);
-  const [openPackage, setOpenPackage] = useState(false);
-  const [ratingEnabled, setRatingEnabled] = useState(false);
-  const [sliderValue, setSliderValue] = useState(0);
-
-  useEffect(() => {
-    loadPreferences();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+    }, [])
+  );
 
   async function loadPreferences() {
     try {
       const res = await fetch(`${API_BASE_URL}${ENDPOINTS.preferences(USER_ID)}`);
       if (!res.ok) return;
-      const prefs: Preferences = await res.json();
-      setCashOnly(prefs.cash_only);
-      setOpenPackage(prefs.open_package);
-      setRatingEnabled(prefs.min_rating >= 4.5);
-      setSliderValue(prefs.max_price ?? 0);
+      const data: Preferences = await res.json();
+      setPrefs(data);
     } catch {
-      // silently use defaults if backend unreachable on first load
+      // silently use no-filter display if backend unreachable
     } finally {
       setPrefsLoading(false);
     }
+  }
+
+  function buildActiveChips(p: Preferences): string[] {
+    const chips: string[] = [];
+    if (p.cash_only) chips.push('💳 Ramburs');
+    if (p.open_package) chips.push('📦 Deschidere colet');
+    if (p.min_rating >= 4.5) chips.push('⭐ Rating 4.5+');
+    if (p.max_price) chips.push(`💰 Max ${p.max_price} RON`);
+    if (p.new_only) chips.push('✨ Produse noi');
+    if (p.min_review_count) chips.push(`💬 Min ${p.min_review_count} recenzii`);
+    const stores: string[] = [];
+    if (p.search_emag) stores.push('eMAG');
+    if (p.search_altex) stores.push('Altex');
+    chips.push(`🏪 ${stores.length > 0 ? stores.join(' & ') : 'eMAG & Altex'}`);
+    return chips;
   }
 
   async function handleSearch() {
@@ -66,6 +74,13 @@ export default function SearchScreen() {
       });
 
       if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          const detail = errorData?.detail;
+          const message = detail?.message ?? 'Prea multe cereri. Revino mai târziu.';
+          Alert.alert('Limită atinsă', message);
+          return;
+        }
         throw new Error(`HTTP ${res.status}`);
       }
 
@@ -76,6 +91,7 @@ export default function SearchScreen() {
           query: query.trim(),
           products: JSON.stringify(data.products),
           total: String(data.total),
+          message: data.message ?? '',
         },
       });
     } catch {
@@ -92,6 +108,8 @@ export default function SearchScreen() {
       </GradientBackground>
     );
   }
+
+  const activeChips = prefs ? buildActiveChips(prefs) : [];
 
   return (
     <GradientBackground>
@@ -117,30 +135,24 @@ export default function SearchScreen() {
                 />
               </View>
 
-              <Text style={styles.sectionTitle}>Preferințele tale</Text>
-
-              <View style={styles.toggleRow}>
-                <PreferenceToggle
-                  label="Plată ramburs"
-                  value={cashOnly}
-                  onValueChange={setCashOnly}
-                />
-                <PreferenceToggle
-                  label="Deschidere colet"
-                  value={openPackage}
-                  onValueChange={setOpenPackage}
-                />
-                <PreferenceToggle
-                  label="Rating 4.5+"
-                  value={ratingEnabled}
-                  onValueChange={setRatingEnabled}
-                />
+              <View style={styles.filtersHeader}>
+                <Text style={styles.sectionTitle}>Filtre active</Text>
+                <Pressable onPress={() => router.push('/(tabs)/profile')}>
+                  <Text style={styles.editLink}>Modifică →</Text>
+                </Pressable>
               </View>
 
-              <PriceSliderInput
-                value={sliderValue}
-                onChange={setSliderValue}
-              />
+              {activeChips.length === 0 ? (
+                <Text style={styles.noFilters}>Fără filtre active</Text>
+              ) : (
+                <View style={styles.chipsRow}>
+                  {activeChips.map((chip) => (
+                    <View key={chip} style={styles.chip}>
+                      <Text style={styles.chipText}>{chip}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               <Pressable
                 style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
@@ -177,17 +189,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  logoTailor: {
-    color: Colors.textDark,
-  },
-  logoBuy: {
-    color: Colors.primary,
-  },
+  logoTailor: { color: Colors.textDark },
+  logoBuy: { color: Colors.primary },
   card: {
     backgroundColor: Colors.cardBg,
     borderRadius: 24,
     padding: 20,
-    gap: 20,
+    gap: 16,
     shadowColor: Colors.cardShadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -209,14 +217,43 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.textDark,
   },
+  filtersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: Colors.textDark,
   },
-  toggleRow: {
+  editLink: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  noFilters: {
+    fontSize: 13,
+    color: Colors.textMid,
+    fontStyle: 'italic',
+  },
+  chipsRow: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: Colors.inputBg,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  chipText: {
+    fontSize: 12,
+    color: Colors.textDark,
+    fontWeight: '500',
   },
   button: {
     backgroundColor: Colors.buttonBg,

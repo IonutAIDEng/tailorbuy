@@ -72,6 +72,10 @@ def user_preference(db, user):
         open_package=False,
         min_rating=4.0,
         max_price=1000,
+        min_review_count=None,
+        new_only=False,
+        search_emag=True,
+        search_altex=True,
     )
     db.add(pref)
     db.commit()

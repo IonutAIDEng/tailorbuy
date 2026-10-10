@@ -8,10 +8,11 @@ import { Colors } from '@/constants/colors';
 import type { Product } from '@/types';
 
 export default function ResultsScreen() {
-  const { query, products: productsParam, total } = useLocalSearchParams<{
+  const { query, products: productsParam, total, message } = useLocalSearchParams<{
     query: string;
     products: string;
     total: string;
+    message: string;
   }>();
 
   const products: Product[] = productsParam ? JSON.parse(productsParam) : [];
@@ -37,7 +38,7 @@ export default function ResultsScreen() {
               <Text style={styles.emptyEmoji}>🔍</Text>
               <Text style={styles.emptyTitle}>Niciun rezultat</Text>
               <Text style={styles.emptyText}>
-                Nu am găsit produse pentru această căutare. Încearcă cu alți termeni.
+                {message || 'Nu am găsit produse pentru această căutare. Încearcă cu alți termeni.'}
               </Text>
             </View>
           </View>
