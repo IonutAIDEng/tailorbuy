@@ -9,10 +9,13 @@ from sqlalchemy.pool import StaticPool
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 os.environ.setdefault("RATELIMIT_ENABLED", "0")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-32-chars-minimum!")
 
 from backend.database import Base, get_db
+from backend.dependencies import get_current_user
 from backend.main import app
 from backend.models import User, UserPreference
+from backend.services.auth_service import hash_password
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -57,11 +60,34 @@ def client(db):
 
 @pytest.fixture
 def user(db):
-    u = User(device_id="test-device-001")
+    u = User(
+        email="test@example.com",
+        hashed_password=hash_password("testpassword"),
+        nickname="Tester",
+    )
     db.add(u)
     db.commit()
     db.refresh(u)
     return u
+
+
+@pytest.fixture
+def auth_client(db, user):
+    """TestClient with both get_db and get_current_user overridden for protected endpoints."""
+    def override_get_db():
+        try:
+            yield db
+        finally:
+            pass
+
+    def override_get_current_user():
+        return user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture

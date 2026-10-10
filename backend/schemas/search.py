@@ -1,8 +1,9 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class SearchRequest(BaseModel):
-    user_id: int
     query: str = Field(min_length=3, max_length=200)
 
 
@@ -16,6 +17,7 @@ class Product(BaseModel):
     store: str
     url: str
     image_url: str | None
+    status_match: Literal["all", "partial"] = "all"
 
 
 class SearchResponse(BaseModel):

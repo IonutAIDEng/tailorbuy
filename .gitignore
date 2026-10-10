@@ -6,3 +6,5 @@ venv/
 *.egg-info/
 .idea/
 tailorbuy_improvements.md
+.coverage
+htmlcov/

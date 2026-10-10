@@ -18,6 +18,7 @@ export const Colors = {
   toggleInactive: '#cdd9e0',
 
   matchesGreen: '#22c55e',
+  matchesAmber: '#f59e0b',
   errorRed: '#ef4444',
 
   tabBar: '#ffffff',

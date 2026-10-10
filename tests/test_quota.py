@@ -81,22 +81,22 @@ class TestCheckAndIncrementQuota:
 
 
 class TestSearchEndpointQuota:
-    def test_returns_429_when_quota_exceeded(self, client, db, user):
+    def test_returns_429_when_quota_exceeded(self, auth_client, db, user):
         user.searches_today = DAILY_SEARCH_LIMIT
         user.last_search_date = date.today()
         db.commit()
-        response = client.post("/search", json={"user_id": user.id, "query": "laptop gaming"})
+        response = auth_client.post("/search", json={"query": "laptop gaming"})
         assert response.status_code == 429
         assert response.json()["detail"]["code"] == "quota_exceeded"
 
-    def test_quota_error_message_is_in_romanian(self, client, db, user):
+    def test_quota_error_message_is_in_romanian(self, auth_client, db, user):
         user.searches_today = DAILY_SEARCH_LIMIT
         user.last_search_date = date.today()
         db.commit()
-        response = client.post("/search", json={"user_id": user.id, "query": "laptop gaming"})
+        response = auth_client.post("/search", json={"query": "laptop gaming"})
         assert "message" in response.json()["detail"]
 
-    def test_search_succeeds_before_limit_is_reached(self, client, db, user, user_preference):
+    def test_search_succeeds_before_limit_is_reached(self, auth_client, db, user, user_preference):
         user.searches_today = DAILY_SEARCH_LIMIT - 1
         user.last_search_date = date.today()
         db.commit()
@@ -104,5 +104,5 @@ class TestSearchEndpointQuota:
                 "cash_on_delivery": True, "store": "eMAG", "url": "http://x.com", "image_url": None}]
         with patch("backend.services.search_service.GeminiService") as MockGemini:
             MockGemini.return_value.search_products.return_value = raw
-            response = client.post("/search", json={"user_id": user.id, "query": "televizor smart"})
+            response = auth_client.post("/search", json={"query": "televizor smart"})
         assert response.status_code == 200

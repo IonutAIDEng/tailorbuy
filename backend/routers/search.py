@@ -1,11 +1,13 @@
 import logging
 
-from fastapi import APIRouter, Request, status, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.dependencies import get_current_user
 from backend.exceptions import SearchQuotaExceededError
 from backend.limiter import limiter
+from backend.models import User
 from backend.schemas.search import SearchRequest, SearchResponse
 from backend.services import search_service
 from backend.services.gemini_service import GeminiServiceError
@@ -20,11 +22,12 @@ router = APIRouter(prefix="/search", tags=["Search"])
 async def search_products(
     request: Request,
     body: SearchRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SearchResponse:
-    """Search for products; enforces per-IP rate limit and per-user daily quota."""
+    """Search for products using the authenticated user's preferences and quota."""
     try:
-        return search_service.search(db, body)
+        return search_service.search(db, current_user.id, body.query)
     except SearchQuotaExceededError:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

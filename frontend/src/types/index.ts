@@ -1,3 +1,9 @@
+export interface AuthUser {
+  id: number;
+  email: string;
+  nickname: string | null;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -8,6 +14,7 @@ export interface Product {
   store: string;
   url: string;
   image_url: string | null;
+  status_match: 'all' | 'partial';
 }
 
 export interface SearchResponse {
