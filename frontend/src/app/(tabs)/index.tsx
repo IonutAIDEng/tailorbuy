@@ -16,10 +16,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '@/components/gradient-background';
 import { Colors } from '@/constants/colors';
-import { API_BASE_URL, ENDPOINTS, USER_ID } from '@/constants/api';
+import { ENDPOINTS } from '@/constants/api';
+import { useAuth } from '@/context/AuthContext';
+import { apiRequest } from '@/services/api';
 import type { Preferences, SearchResponse } from '@/types';
 
 export default function SearchScreen() {
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [prefsLoading, setPrefsLoading] = useState(true);
@@ -33,7 +36,7 @@ export default function SearchScreen() {
 
   async function loadPreferences() {
     try {
-      const res = await fetch(`${API_BASE_URL}${ENDPOINTS.preferences(USER_ID)}`);
+      const res = await apiRequest(ENDPOINTS.preferences);
       if (!res.ok) return;
       const data: Preferences = await res.json();
       setPrefs(data);
@@ -67,10 +70,9 @@ export default function SearchScreen() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}${ENDPOINTS.search}`, {
+      const res = await apiRequest(ENDPOINTS.search, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: USER_ID, query: query.trim() }),
+        body: JSON.stringify({ query: query.trim() }),
       });
 
       if (!res.ok) {
@@ -110,6 +112,7 @@ export default function SearchScreen() {
   }
 
   const activeChips = prefs ? buildActiveChips(prefs) : [];
+  const nickname = user?.nickname;
 
   return (
     <GradientBackground>
@@ -126,7 +129,7 @@ export default function SearchScreen() {
                 <Text style={styles.searchIcon}>🔍</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ce cauți astăzi?"
+                  placeholder={nickname ? `Ce cauți astăzi, ${nickname}?` : 'Ce cauți astăzi?'}
                   placeholderTextColor={Colors.textLight}
                   value={query}
                   onChangeText={setQuery}

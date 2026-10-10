@@ -1,3 +1,9 @@
+export interface AuthUser {
+  id: number;
+  email: string;
+  nickname: string | null;
+}
+
 export interface Product {
   id: number;
   name: string;
