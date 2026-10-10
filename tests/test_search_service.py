@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from backend.models import UserPreference
-from backend.schemas.search import SearchRequest
 from backend.services import search_service
 from backend.services.gemini_service import GeminiServiceError
 from backend.services.search_service import _apply_filters, _compute_match_score, _build_no_results_message
@@ -192,8 +191,7 @@ class TestSearch:
         raw = [raw_product(cash_on_delivery=True, rating=4.5)]
         with patch("backend.services.search_service.GeminiService") as MockGemini:
             MockGemini.return_value.search_products.return_value = raw
-            request = SearchRequest(user_id=user.id, query="canapea")
-            response = search_service.search(db, request)
+            response = search_service.search(db, user.id, "canapea")
 
         assert response.query == "canapea"
         assert response.total == 1
@@ -203,8 +201,7 @@ class TestSearch:
         raw = [raw_product(), raw_product(), raw_product()]
         with patch("backend.services.search_service.GeminiService") as MockGemini:
             MockGemini.return_value.search_products.return_value = raw
-            request = SearchRequest(user_id=user.id, query="scaun")
-            response = search_service.search(db, request)
+            response = search_service.search(db, user.id, "scaun")
 
         ids = [p.id for p in response.products]
         assert ids == [1, 2, 3]
@@ -213,14 +210,12 @@ class TestSearch:
         raw = [raw_product()]
         with patch("backend.services.search_service.GeminiService") as MockGemini:
             MockGemini.return_value.search_products.return_value = raw
-            request = SearchRequest(user_id=user.id, query="laptop")
-            response = search_service.search(db, request)
+            response = search_service.search(db, user.id, "laptop")
 
         assert response.total == 1
 
     def test_search_propagates_gemini_error(self, db, user):
         with patch("backend.services.search_service.GeminiService") as MockGemini:
             MockGemini.return_value.search_products.side_effect = GeminiServiceError("fail")
-            request = SearchRequest(user_id=user.id, query="masa")
             with pytest.raises(GeminiServiceError):
-                search_service.search(db, request)
+                search_service.search(db, user.id, "masa")
