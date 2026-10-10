@@ -14,6 +14,7 @@ export interface SearchResponse {
   query: string;
   products: Product[];
   total: number;
+  message: string | null;
 }
 
 export interface Preferences {
@@ -22,6 +23,10 @@ export interface Preferences {
   open_package: boolean;
   min_rating: number;
   max_price: number | null;
+  min_review_count: number | null;
+  new_only: boolean;
+  search_emag: boolean;
+  search_altex: boolean;
 }
 
 export interface PreferencesUpdateRequest {
@@ -29,4 +34,8 @@ export interface PreferencesUpdateRequest {
   open_package: boolean;
   min_rating: number;
   max_price: number | null;
+  min_review_count: number | null;
+  new_only: boolean;
+  search_emag: boolean;
+  search_altex: boolean;
 }

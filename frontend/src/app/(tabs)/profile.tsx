@@ -1,3 +1,4 @@
+import Slider from '@react-native-community/slider';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,7 +26,11 @@ export default function ProfileScreen() {
   const [cashOnly, setCashOnly] = useState(false);
   const [openPackage, setOpenPackage] = useState(false);
   const [ratingEnabled, setRatingEnabled] = useState(false);
+  const [newOnly, setNewOnly] = useState(false);
   const [sliderValue, setSliderValue] = useState(0);
+  const [minReviewCount, setMinReviewCount] = useState(0);
+  const [searchEmag, setSearchEmag] = useState(true);
+  const [searchAltex, setSearchAltex] = useState(true);
 
   useEffect(() => {
     loadPreferences();
@@ -39,7 +44,11 @@ export default function ProfileScreen() {
       setCashOnly(prefs.cash_only);
       setOpenPackage(prefs.open_package);
       setRatingEnabled(prefs.min_rating >= 4.5);
+      setNewOnly(prefs.new_only);
       setSliderValue(prefs.max_price ?? 0);
+      setMinReviewCount(prefs.min_review_count ?? 0);
+      setSearchEmag(prefs.search_emag);
+      setSearchAltex(prefs.search_altex);
     } catch {
       Alert.alert('Eroare', 'Nu am putut încărca preferințele.');
     } finally {
@@ -65,6 +74,10 @@ export default function ProfileScreen() {
           open_package: openPackage,
           min_rating: ratingEnabled ? 4.5 : 0.0,
           max_price: sliderValue === 0 ? null : sliderValue,
+          min_review_count: minReviewCount === 0 ? null : minReviewCount,
+          new_only: newOnly,
+          search_emag: searchEmag,
+          search_altex: searchAltex,
         }),
       });
 
@@ -113,6 +126,14 @@ export default function ProfileScreen() {
               />
             </View>
 
+            <View style={styles.toggleRow}>
+              <PreferenceToggle
+                label="Doar produse noi"
+                value={newOnly}
+                onValueChange={markDirty(setNewOnly)}
+              />
+            </View>
+
             <PriceSliderInput
               value={sliderValue}
               onChange={(v) => {
@@ -120,6 +141,44 @@ export default function ProfileScreen() {
                 setDirty(true);
               }}
             />
+
+            <View style={styles.sliderSection}>
+              <View style={styles.sliderHeader}>
+                <Text style={styles.sliderLabel}>Recenzii minime</Text>
+                <Text style={styles.sliderValue}>
+                  {minReviewCount === 0 ? 'Fără restricție' : `Minim ${minReviewCount}`}
+                </Text>
+              </View>
+              <Slider
+                value={minReviewCount}
+                onValueChange={(v) => {
+                  setMinReviewCount(Math.round(v / 5) * 5);
+                  setDirty(true);
+                }}
+                minimumValue={0}
+                maximumValue={200}
+                step={5}
+                minimumTrackTintColor={Colors.primary}
+                maximumTrackTintColor={Colors.toggleInactive}
+                thumbTintColor={Colors.primary}
+              />
+            </View>
+
+            <View style={styles.storeSection}>
+              <Text style={styles.sectionTitle}>Magazine</Text>
+              <View style={styles.toggleRow}>
+                <PreferenceToggle
+                  label="eMAG"
+                  value={searchEmag}
+                  onValueChange={markDirty(setSearchEmag)}
+                />
+                <PreferenceToggle
+                  label="Altex"
+                  value={searchAltex}
+                  onValueChange={markDirty(setSearchAltex)}
+                />
+              </View>
+            </View>
 
             <Pressable
               style={({ pressed }) => [
@@ -191,6 +250,27 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row',
     gap: 10,
+  },
+  sliderSection: {
+    gap: 4,
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sliderLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textDark,
+  },
+  sliderValue: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  storeSection: {
+    gap: 12,
   },
   button: {
     backgroundColor: Colors.buttonBg,
